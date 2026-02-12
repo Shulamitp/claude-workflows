@@ -2,7 +2,10 @@
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened]
+    types:
+      - opened
+      - synchronize
+      - reopened
 
 jobs:
   security-review:
@@ -20,26 +23,24 @@ jobs:
         with:
           fetch-depth: 0
 
-      # Ensure we have the base branch to diff against
       - name: Fetch base branch
         run: git fetch origin ${{ github.base_ref }}
 
-      # Generate explicit PR diff (important!)
       - name: Generate PR diff
-        id: diff
-        run: |
-          git diff origin/${{ github.base_ref }}...HEAD > pr.diff
-          echo "DIFF_SIZE=$(wc -c < pr.diff)" >> $GITHUB_ENV
+        run: git diff origin/${{ github.base_ref }}...HEAD > pr.diff
 
-      # Optional debug visibility
-      - name: Debug diff size
-        run: echo "PR diff size = $DIFF_SIZE bytes"
+      - name: Show diff size (debug)
+        run: wc -c pr.diff
 
       - name: Claude Security Review
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           github_token: ${{ github.token }}
+          allowed_tools: |
+            Bash
+            GitHub
+          show_full_output: true
           prompt: |
             You are a STRICT security-focused code reviewer.
 
@@ -55,24 +56,23 @@ jobs:
 
             SECURITY RULES — enforce strictly:
 
-            1. Every HTTP endpoint (MapGet, MapPost, MapPut, MapDelete, controllers) MUST require authorization.
-            2. Sensitive operations MUST validate user roles.
-            3. Database access MUST validate user context.
-            4. No secrets, tokens, or credentials in code.
-            5. Validate input handling.
+            1. Every HTTP endpoint must require authorization.
+            2. Sensitive operations must validate user roles.
+            3. Database access must validate user context.
+            4. No secrets or credentials in code.
+            5. Validate inputs.
 
-            REQUIRED OUTPUT BEHAVIOR:
+            REQUIRED BEHAVIOR:
 
-            👉 For EACH issue found:
-            - Create a GitHub INLINE review comment
+            For EACH issue:
+            - Create an inline GitHub review comment
             - Explain the security risk
             - Suggest a concrete fix
 
-            👉 If NO issues are found:
-            - Add ONE review comment confirming the PR passed security review.
+            If no issues are found:
+            - Add one review comment confirming the PR passed security review.
 
-            Be strict.
-            Assume missing authorization is a critical vulnerability.
+            Missing authorization = critical vulnerability.
 
-            Do NOT summarize.
-            Only produce actionable review comments.
+            Do not summarize.
+            Only actionable review comments.
