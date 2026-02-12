@@ -19,19 +19,127 @@ jobs:
         with:
           fetch-depth: 0
       
-      - name: Run Claude Code Review
+      # Primary attempt: Use claude-code-action (official, maintained)
+      - name: Try Claude Code Action
+        id: claude_action
+        continue-on-error: true
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           github_token: ${{ github.token }}
           prompt: |
-            You are a CODE REVIEWER, not a code fixer.
+            IMPORTANT: You MUST write review comments on this Pull Request.
             
-            ONLY write review comments. DO NOT modify the code.
+            Your role: Security-focused code reviewer
             
-            Focus specifically on permission checks:
-            - Flag any endpoint missing [Authorize] attribute
-            - Note where user roles should be checked
-            - Point out data access without user context validation
+            Task: Review ALL changes in this PR and identify security issues.
             
-            Write your feedback as PR review comments, not code changes.
+            Specifically check:
+            1. Every HTTP endpoint (MapGet, MapPost, etc.) MUST have [Authorize] attribute
+            2. User role validation before sensitive operations
+            3. User context validation before database queries
+            
+            For EACH issue you find:
+            - Add a review comment on the specific line
+            - Explain the security risk
+            - Suggest how to fix it
+            
+            Even if the code looks simple, you MUST review it and comment on any missing authorization.
+      
+      # Fallback: Direct API call if action fails or doesn't complete
+      - name: Fallback - Direct API Review
+        if: steps.claude_action.outcome != 'success'
+        id: direct_review
+        uses: actions/github-script@v7
+        env:
+          CLAUDE_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+        with:
+          script: |
+            const { execSync } = require('child_process');
+            
+            console.log('🔄 Running fallback - Direct API review');
+            
+            try {
+              // Get the PR diff
+              const diff = execSync('git diff origin/${{ github.base_ref }}...${{ github.head_ref }}', {
+                maxBuffer: 1024 * 1024 * 10
+              }).toString();
+              
+              console.log(`📊 Diff size: ${diff.length} characters`);
+              
+              // Call Claude API directly
+              const response = await fetch('https://api.anthropic.com/v1/messages', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'x-api-key': process.env.CLAUDE_TOKEN,
+                  'anthropic-version': '2023-06-01'
+                },
+                body: JSON.stringify({
+                  model: 'claude-sonnet-4-5-20250929',
+                  max_tokens: 4000,
+                  messages: [{
+                    role: 'user',
+                    content: `You are a security-focused code reviewer.
+
+Review this Pull Request diff and identify ALL security issues.
+
+Focus on:
+1. Missing [Authorize] attributes on HTTP endpoints (MapGet, MapPost, etc.)
+2. Missing user role validation
+3. Missing user context validation before data access
+
+For each issue found, provide:
+- The file and line where the issue is located
+- Clear explanation of the security risk
+- Specific recommendation to fix it
+
+Here's the diff:
+
+\`\`\`diff
+${diff.substring(0, 45000)}
+\`\`\`
+
+Format your response as a structured security review with specific references.`
+                  }]
+                })
+              });
+              
+              const data = await response.json();
+              
+              if (!response.ok) {
+                console.error('❌ API Error:', JSON.stringify(data, null, 2));
+                core.setFailed(`Claude API Error: ${data.error?.message || 'Unknown error'}`);
+                return;
+              }
+              
+              const review = data.content[0].text;
+              console.log('✅ Review received from Claude');
+              
+              // Post as PR comment
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: `## 🤖 Claude Security Review\n\n${review}\n\n---\n\n*📌 Note: Review performed via direct API (fallback mode)*\n*💰 Cost: ~${(data.usage?.input_tokens * 0.000003 + data.usage?.output_tokens * 0.000015).toFixed(4)}*`
+              });
+              
+              console.log('✅ Review comment posted successfully');
+              
+            } catch (error) {
+              console.error('❌ Fallback failed:', error);
+              core.setFailed(`Fallback review failed: ${error.message}`);
+            }
+      
+      # Report which method was used
+      - name: Report Status
+        if: always()
+        run: |
+          if [ "${{ steps.claude_action.outcome }}" == "success" ]; then
+            echo "✅ Review completed via claude-code-action (primary method)"
+          elif [ "${{ steps.direct_review.outcome }}" == "success" ]; then
+            echo "⚠️ Review completed via direct API (fallback method)"
+          else
+            echo "❌ Both review methods failed"
+            exit 1
+          fi
