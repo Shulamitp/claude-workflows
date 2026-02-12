@@ -1,65 +1,44 @@
-# Fallback: Direct API call if action fails or doesn't complete
-      - name: Fallback - Direct API Review
-        if: steps.claude_action.outcome != 'success'
-        id: direct_review
-        uses: actions/github-script@v7
-        env:
-          CLAUDE_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+﻿name: Claude Code Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  code-review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    
+    permissions:
+      contents: read
+      pull-requests: write
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
         with:
-          script: |
-            const { execSync } = require('child_process');
+          fetch-depth: 0
+      
+      - name: Claude Code Review
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          github_token: ${{ github.token }}
+          prompt: |
+            IMPORTANT: You MUST write review comments on this Pull Request.
             
-            console.log('Running fallback - Direct API review');
+            Your role: Security-focused code reviewer
             
-            try {
-              const diff = execSync('git diff origin/${{ github.base_ref }}...${{ github.head_ref }}', {
-                maxBuffer: 1024 * 1024 * 10
-              }).toString();
-              
-              console.log('Diff size: ' + diff.length + ' characters');
-              
-              const response = await fetch('https://api.anthropic.com/v1/messages', {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'x-api-key': process.env.CLAUDE_TOKEN,
-                  'anthropic-version': '2023-06-01'
-                },
-                body: JSON.stringify({
-                  model: 'claude-sonnet-4-5-20250929',
-                  max_tokens: 4000,
-                  messages: [{
-                    role: 'user',
-                    content: 'You are a security-focused code reviewer.\n\nReview this Pull Request diff and identify ALL security issues.\n\nFocus on:\n1. Missing [Authorize] attributes on HTTP endpoints\n2. Missing user role validation\n3. Missing user context validation before data access\n\nFor each issue found, provide:\n- The file and line where the issue is located\n- Clear explanation of the security risk\n- Specific recommendation to fix it\n\nHere is the diff:\n\n```diff\n' + diff.substring(0, 45000) + '\n```\n\nFormat your response as a structured security review.'
-                  }]
-                })
-              });
-              
-              const data = await response.json();
-              
-              if (!response.ok) {
-                console.error('API Error:', JSON.stringify(data, null, 2));
-                core.setFailed('Claude API Error: ' + (data.error && data.error.message || 'Unknown error'));
-                return;
-              }
-              
-              const review = data.content[0].text;
-              console.log('Review received from Claude');
-              
-              const inputTokens = data.usage && data.usage.input_tokens || 0;
-              const outputTokens = data.usage && data.usage.output_tokens || 0;
-              const cost = (inputTokens * 0.000003 + outputTokens * 0.000015).toFixed(4);
-              
-              await github.rest.issues.createComment({
-                issue_number: context.issue.number,
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                body: '## Claude Security Review\n\n' + review + '\n\n---\n\n*Note: Review performed via direct API (fallback mode)*\n*Cost: ~$' + cost + '*'
-              });
-              
-              console.log('Review comment posted successfully');
-              
-            } catch (error) {
-              console.error('Fallback failed:', error);
-              core.setFailed('Fallback review failed: ' + error.message);
-            }
+            Task: Review ALL changes in this PR and identify security issues.
+            
+            Specifically check:
+            1. Every HTTP endpoint (MapGet, MapPost, etc.) MUST have [Authorize] attribute
+            2. User role validation before sensitive operations
+            3. User context validation before database queries
+            
+            For EACH issue you find:
+            - Add a review comment on the specific line
+            - Explain the security risk
+            - Suggest how to fix it
+            
+            Even if the code looks simple, you MUST review it and comment on any missing authorization.
