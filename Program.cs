@@ -1,23 +1,44 @@
+using Microsoft.AspNetCore.Authorization;
+
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container
+// Services
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddOpenApi();
 
+// Fake auth for demo purposes
+builder.Services.AddAuthorization();
+
 var app = builder.Build();
 
-// Configure the HTTP request pipeline
+// Dev OpenAPI
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
 }
 
-// Hello endpoint
-app.MapGet("/hello", () => "Hello from .NET API!")
-   .WithName("GetHello");
+app.UseAuthorization();
 
-// Root endpoint
-app.MapGet("/", () => "Welcome to Hello API - try /hello endpoint")
-   .WithName("Root");
+
+app.MapGet("/secure", [Authorize] () =>
+{
+    return "This endpoint requires authorization";
+})
+.WithName("SecureEndpoint");
+
+
+app.MapGet("/hello", () =>
+{
+    return "Hello from insecure endpoint!";
+})
+.WithName("InsecureHello");
+
+
+app.MapGet("/", () =>
+{
+    return "Root endpoint without authorization";
+})
+.WithName("Root");
+
 
 app.Run();
