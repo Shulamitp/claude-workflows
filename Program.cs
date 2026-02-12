@@ -19,7 +19,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseAuthorization();
 
-
+//
 app.MapGet("/secure", [Authorize] () =>
 {
     return "This endpoint requires authorization";
