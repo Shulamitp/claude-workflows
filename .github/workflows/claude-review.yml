@@ -2,10 +2,7 @@ name: Claude Security Code Review
 
 on:
   pull_request:
-    types:
-      - opened
-      - synchronize
-      - reopened
+    types: [opened, synchronize, reopened]
 
 jobs:
   security-review:
@@ -18,7 +15,7 @@ jobs:
       issues: write
 
     steps:
-      - name: Checkout repository
+      - name: Checkout repo
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
@@ -26,50 +23,31 @@ jobs:
       - name: Fetch base branch
         run: git fetch origin ${{ github.base_ref }}
 
-      - name: Generate PR diff
+      - name: Generate diff
         run: git diff origin/${{ github.base_ref }}...HEAD > pr.diff
 
-      - name: Debug diff size
-        run: wc -c pr.diff
-
-      - name: Claude Security Review
+      - name: Claude PR Security Review
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           github_token: ${{ github.token }}
+
+          # 👇 זה מה שגורם לפרסום ב-PR
+          use_sticky_comment: true
+          track_progress: true
           show_full_output: true
+
           prompt: |
-            You are a STRICT security-focused code reviewer.
+            SECURITY REVIEW — PR DIFF BELOW
 
-            Review ONLY the Pull Request diff below.
-
-            ======================
-            PR DIFF START
-            ======================
             {{ file:pr.diff }}
-            ======================
-            PR DIFF END
-            ======================
 
-            SECURITY RULES — enforce strictly:
+            For every security issue:
+            - Write a GitHub PR review comment
+            - Explain the risk
+            - Suggest a fix
 
-            1. Every HTTP endpoint must require authorization.
-            2. Sensitive operations must validate user roles.
-            3. Database access must validate user context.
-            4. No secrets or credentials in code.
-            5. Validate inputs.
-
-            REQUIRED BEHAVIOR:
-
-            For EACH issue:
-            - Create an inline GitHub review comment
-            - Explain the security risk
-            - Suggest a concrete fix
-
-            If no issues are found:
-            - Add one review comment confirming the PR passed security review.
+            If no issues exist:
+            - Write confirmation comment
 
             Missing authorization = critical vulnerability.
-
-            Do not summarize.
-            Only actionable review comments.
