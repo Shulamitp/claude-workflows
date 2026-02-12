@@ -1,4 +1,4 @@
-﻿name: Claude Security Code Review
+name: Claude Security Code Review
 
 on:
   pull_request:
@@ -29,7 +29,7 @@ jobs:
       - name: Generate PR diff
         run: git diff origin/${{ github.base_ref }}...HEAD > pr.diff
 
-      - name: Show diff size (debug)
+      - name: Debug diff size
         run: wc -c pr.diff
 
       - name: Claude Security Review
@@ -37,9 +37,6 @@ jobs:
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           github_token: ${{ github.token }}
-          allowed_tools: |
-            Bash
-            GitHub
           show_full_output: true
           prompt: |
             You are a STRICT security-focused code reviewer.
