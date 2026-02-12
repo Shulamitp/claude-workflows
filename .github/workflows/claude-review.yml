@@ -25,7 +25,13 @@ jobs:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           github_token: ${{ github.token }}
           prompt: |
+            You are a CODE REVIEWER, not a code fixer.
+            
+            ONLY write review comments. DO NOT modify the code.
+            
             Focus specifically on permission checks:
-            - Every endpoint must have [Authorize] attribute
-            - Verify user roles are checked
-            - Flag any data access without user context validation
+            - Flag any endpoint missing [Authorize] attribute
+            - Note where user roles should be checked
+            - Point out data access without user context validation
+            
+            Write your feedback as PR review comments, not code changes.
