@@ -1,44 +1,78 @@
-﻿name: Claude Code Review
+﻿name: Claude Security Code Review
 
 on:
   pull_request:
     types: [opened, synchronize, reopened]
 
 jobs:
-  code-review:
+  security-review:
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    
+
     permissions:
       contents: read
       pull-requests: write
-    
+      issues: write
+
     steps:
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      
-      - name: Claude Code Review
+
+      # Ensure we have the base branch to diff against
+      - name: Fetch base branch
+        run: git fetch origin ${{ github.base_ref }}
+
+      # Generate explicit PR diff (important!)
+      - name: Generate PR diff
+        id: diff
+        run: |
+          git diff origin/${{ github.base_ref }}...HEAD > pr.diff
+          echo "DIFF_SIZE=$(wc -c < pr.diff)" >> $GITHUB_ENV
+
+      # Optional debug visibility
+      - name: Debug diff size
+        run: echo "PR diff size = $DIFF_SIZE bytes"
+
+      - name: Claude Security Review
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           github_token: ${{ github.token }}
           prompt: |
-            IMPORTANT: You MUST write review comments on this Pull Request.
-            
-            Your role: Security-focused code reviewer
-            
-            Task: Review ALL changes in this PR and identify security issues.
-            
-            Specifically check:
-            1. Every HTTP endpoint (MapGet, MapPost, etc.) MUST have [Authorize] attribute
-            2. User role validation before sensitive operations
-            3. User context validation before database queries
-            
-            For EACH issue you find:
-            - Add a review comment on the specific line
+            You are a STRICT security-focused code reviewer.
+
+            Review ONLY the Pull Request diff below.
+
+            ======================
+            PR DIFF START
+            ======================
+            {{ file:pr.diff }}
+            ======================
+            PR DIFF END
+            ======================
+
+            SECURITY RULES — enforce strictly:
+
+            1. Every HTTP endpoint (MapGet, MapPost, MapPut, MapDelete, controllers) MUST require authorization.
+            2. Sensitive operations MUST validate user roles.
+            3. Database access MUST validate user context.
+            4. No secrets, tokens, or credentials in code.
+            5. Validate input handling.
+
+            REQUIRED OUTPUT BEHAVIOR:
+
+            👉 For EACH issue found:
+            - Create a GitHub INLINE review comment
             - Explain the security risk
-            - Suggest how to fix it
-            
-            Even if the code looks simple, you MUST review it and comment on any missing authorization.
+            - Suggest a concrete fix
+
+            👉 If NO issues are found:
+            - Add ONE review comment confirming the PR passed security review.
+
+            Be strict.
+            Assume missing authorization is a critical vulnerability.
+
+            Do NOT summarize.
+            Only produce actionable review comments.
