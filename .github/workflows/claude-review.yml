@@ -8,46 +8,28 @@ jobs:
   security-review:
     runs-on: ubuntu-latest
     timeout-minutes: 10
-
     permissions:
       contents: read
       pull-requests: write
       issues: write
 
     steps:
-      - name: Checkout repo
+      - name: Checkout code
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Fetch base branch
-        run: git fetch origin ${{ github.base_ref }}
-
-      - name: Generate diff
-        run: git diff origin/${{ github.base_ref }}...HEAD > pr.diff
 
       - name: Claude PR Security Review
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           github_token: ${{ github.token }}
-
-          # 👇 זה מה שגורם לפרסום ב-PR
-          use_sticky_comment: true
-          track_progress: true
-          show_full_output: true
-
+          use_sticky_comment: false
           prompt: |
-            SECURITY REVIEW — PR DIFF BELOW
-
-            {{ file:pr.diff }}
-
-            For every security issue:
-            - Write a GitHub PR review comment
+            Review this PR for security vulnerabilities.
+            
+            For every issue found:
+            - Write an inline PR review comment on the specific line
             - Explain the risk
             - Suggest a fix
-
-            If no issues exist:
-            - Write confirmation comment
-
-            Missing authorization = critical vulnerability.
+            - Mark severity (Critical/High/Medium/Low)
+            
+            If no issues found, write a confirmation comment.
