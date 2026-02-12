@@ -12,12 +12,29 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 }
 
-// Hello endpoint
+// Hello endpoint - NO AUTHORIZATION!
 app.MapGet("/hello", () => "Hello from .NET API!")
    .WithName("GetHello");
 
-// Root endpoint
+// Root endpoint - NO AUTHORIZATION!
 app.MapGet("/", () => "Welcome to Hello API - try /hello endpoint")
    .WithName("Root");
 
+// User data endpoint - NO AUTHORIZATION AND NO VALIDATION!
+app.MapGet("/users/{id}", (int id) =>
+{
+    // Simulating database access without any permission checks
+    var user = new { Id = id, Name = "John Doe", Email = "john@example.com" };
+    return Results.Ok(user);
+})
+.WithName("GetUser");
+
+// Admin endpoint - NO ROLE CHECK!
+app.MapPost("/admin/delete-user/{id}", (int id) =>
+{
+    // Critical operation without any authorization!
+    return Results.Ok($"User {id} deleted");
+})
+.WithName("DeleteUser");
+//
 app.Run();
