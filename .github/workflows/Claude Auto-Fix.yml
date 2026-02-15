@@ -65,12 +65,11 @@ jobs:
       - name: Claude Auto Fix
         id: claude
         env:
-          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           PROMPT: ${{ steps.prompt.outputs.result }}
         run: |
-          claude -p --max-turns 10 \
-            --allowedTools "Edit" "Write" "Bash(git add*)" "Bash(git commit*)" "Bash(cat*)" "Bash(ls*)" "Bash(find*)" \
-            "$PROMPT"
+          claude -p "$PROMPT" --yes --max-turns 10 \
+            --allowedTools "Edit,Write,Bash(git add *),Bash(git commit *),Bash(cat *),Bash(ls *),Bash(find *)"
 
       - name: Detect changes
         id: changes
