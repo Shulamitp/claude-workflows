@@ -5,10 +5,10 @@ on:
     types: [labeled]
 
 permissions:
-  id-token: write         # ← חובה עבור Claude Code Action
   contents: write
   pull-requests: write
   issues: write
+  # לא צריך id-token כי אנחנו לא משתמשים ב-App token
 
 jobs:
   auto-fix:
@@ -27,7 +27,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-      - name: Build prompt safely
+      - name: Build prompt from issue
         id: prompt
         uses: actions/github-script@v7
         with:
@@ -44,9 +44,8 @@ jobs:
               issueBody,
               '',
               'Rules:',
-              '- The project is a C# Minimal API in Program.cs',
-              '- Apply minimal safe fix',
-              '- Follow existing style',
+              '- Apply a minimal safe fix',
+              '- Follow the existing code style',
               '- Do not introduce unrelated changes',
               '- Make the change and commit it with a descriptive message'
             ].join('\n');
@@ -64,7 +63,8 @@ jobs:
       - name: Claude Auto Fix
         uses: anthropics/claude-code-action@v1
         with:
-          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          github_token: ${{ github.token }}
           prompt: ${{ steps.prompt.outputs.result }}
           claude_args: |
             --max-turns 10
@@ -81,15 +81,12 @@ jobs:
 
       - name: Push and Create Pull Request
         if: steps.changes.outputs.has_changes == 'true'
-        id: create-pr
-        run: |
-          git push origin auto-fix/issue-${{ github.event.issue.number }}
+        run: git push origin auto-fix/issue-${{ github.event.issue.number }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Create PR via GitHub API
         if: steps.changes.outputs.has_changes == 'true'
-        id: pr
         uses: actions/github-script@v7
         with:
           script: |
