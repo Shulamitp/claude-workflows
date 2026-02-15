@@ -4,15 +4,17 @@ on:
   issues:
     types: [labeled]
 
+permissions:
+  id-token: write         # ← חובה עבור Claude Code Action
+  contents: write
+  pull-requests: write
+  issues: write
+
 jobs:
   auto-fix:
     if: contains(github.event.issue.labels.*.name, 'auto-fix')
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    permissions:
-      contents: write
-      pull-requests: write
-      issues: write
 
     steps:
       - name: Checkout repo
