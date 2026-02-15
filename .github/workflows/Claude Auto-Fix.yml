@@ -59,16 +59,13 @@ jobs:
       - name: Create temp branch
         run: git checkout -b auto-fix/issue-${{ github.event.issue.number }}
 
-      - name: Install Claude Code
-        run: npm install -g @anthropic-ai/claude-code
-
       - name: Claude Auto Fix
-        id: claude
-        env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          PROMPT: ${{ steps.prompt.outputs.result }}
-        run: |
-          claude -p "$PROMPT" --yes --max-turns 10 \
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          prompt: ${{ steps.prompt.outputs.result }}
+          claude_args: |
+            --max-turns 10
             --allowedTools "Edit,Write,Bash(git add *),Bash(git commit *),Bash(cat *),Bash(ls *),Bash(find *)"
 
       - name: Detect changes
@@ -86,7 +83,7 @@ jobs:
         run: |
           git push origin auto-fix/issue-${{ github.event.issue.number }}
         env:
-          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Create PR via GitHub API
         if: steps.changes.outputs.has_changes == 'true'
@@ -127,7 +124,6 @@ jobs:
               repo: context.repo.repo,
               body: "⚠️ Claude ran but produced no changes."
             })
-
 
       # Placeholder for future test stage
       # - name: Run tests (future)
