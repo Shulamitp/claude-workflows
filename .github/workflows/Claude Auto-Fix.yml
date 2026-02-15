@@ -33,7 +33,7 @@ jobs:
           script: |
             const issueBody = context.payload.issue.body || '';
             if (!issueBody.trim()) {
-              return ''; // ריק אם אין תוכן
+              return '';
             }
             const prompt = [
               'Fix the bug described in this issue.',
@@ -42,10 +42,11 @@ jobs:
               issueBody,
               '',
               'Rules:',
+              '- The project is a C# Minimal API in Program.cs',
               '- Apply minimal safe fix',
               '- Follow existing style',
               '- Do not introduce unrelated changes',
-              '- Commit after fixing'
+              '- Make the change and commit it with a descriptive message'
             ].join('\n');
             return prompt;
 
@@ -71,7 +72,7 @@ jobs:
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           github_token: ${{ github.token }}
-          claude_args: "--yes --max-turns 5"
+          claude_args: "--yes --max-turns 10"
           show_full_output: true
           prompt: ${{ steps.prompt.outputs.result }}
 
