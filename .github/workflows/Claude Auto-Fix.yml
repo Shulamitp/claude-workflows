@@ -8,7 +8,7 @@ jobs:
   auto-fix:
     if: contains(github.event.issue.labels.*.name, 'auto-fix')
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
 
     steps:
       - name: Checkout code
@@ -20,16 +20,27 @@ jobs:
           node-version: '20'
 
       - name: Install Claude Code
-        run: npm install -g @anthropic-ai/claude-code
+        run: |
+          npm install -g @anthropic-ai/claude-code
+          export PATH="$PATH:$(npm config get prefix)/bin"
+          which claude-code || echo "Claude Code not found in PATH"
+
+      - name: Verify Installation
+        run: |
+          export PATH="$PATH:$(npm config get prefix)/bin"
+          claude-code --version
 
       - name: Configure Claude Code
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
+          export PATH="$PATH:$(npm config get prefix)/bin"
           claude-code config set api-key "$ANTHROPIC_API_KEY"
 
       - name: Run Claude Code Fix
         run: |
+          export PATH="$PATH:$(npm config get prefix)/bin"
+          
           cat > /tmp/prompt.txt << 'EOF'
           Fix the bug in src/Program.cs
           
