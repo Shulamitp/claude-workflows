@@ -8,7 +8,6 @@ permissions:
   contents: write
   pull-requests: write
   issues: write
-  # לא צריך id-token כי אנחנו לא משתמשים ב-App token
 
 jobs:
   auto-fix:
@@ -67,13 +66,13 @@ jobs:
           github_token: ${{ github.token }}
           prompt: ${{ steps.prompt.outputs.result }}
           claude_args: |
-            --max-turns 10
-            --allowedTools "Edit,Write,Bash(git add *),Bash(git commit *),Bash(cat *),Bash(ls *),Bash(find *)"
+            --max-turns 25
+            --allowedTools Edit,Write,Bash
 
       - name: Detect changes
         id: changes
         run: |
-          if [[ -n $(git log origin/main..HEAD --oneline) ]]; then
+          if [[ -n $(git status --porcelain) ]]; then
             echo "has_changes=true" >> $GITHUB_OUTPUT
           else
             echo "has_changes=false" >> $GITHUB_OUTPUT
@@ -86,6 +85,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Create PR via GitHub API
+        id: pr
         if: steps.changes.outputs.has_changes == 'true'
         uses: actions/github-script@v7
         with:
