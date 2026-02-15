@@ -71,14 +71,8 @@ jobs:
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           github_token: ${{ github.token }}
-          claude_args: "--yes --max-turns 10"
+          claude_args: '--yes --max-turns 10 --allowedTools "Edit" "Write" "Bash(git add*)" "Bash(git commit*)"'
           show_full_output: true
-          settings: |
-            {
-              "permissions": {
-                "allow": ["Edit", "Write", "Bash(git commit*)","Bash(git add*)"]
-              }
-            }
           prompt: ${{ steps.prompt.outputs.result }}
 
       - name: Detect changes
