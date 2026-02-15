@@ -13,7 +13,7 @@ if (app.Environment.IsDevelopment())
 }
 //
 // Hello endpoint
-app.MapGet("/hello", () => "Hello from .NET API!")
+app.MapGet("/hello", () => "Hello from Automated .NET API!")
    .WithName("GetHello");
 
 // Root endpoint
