@@ -1,19 +1,24 @@
 name: Claude Auto Fix PR
+
 on:
   issues:
     types: [labeled]
+
 jobs:
   auto-fix:
     if: contains(github.event.issue.labels.*.name, 'auto-fix')
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     permissions:
       contents: write
       pull-requests: write
       issues: write
+
     steps:
-      - name: Checkout code
+      - name: Checkout repo
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Configure git
         run: |
@@ -26,7 +31,10 @@ jobs:
         with:
           result-encoding: string
           script: |
-            const issueBody = context.payload.issue.body || 'No description provided.';
+            const issueBody = context.payload.issue.body || '';
+            if (!issueBody.trim()) {
+              return ''; // ריק אם אין תוכן
+            }
             const prompt = [
               'Fix the bug described in this issue.',
               '',
@@ -41,8 +49,25 @@ jobs:
             ].join('\n');
             return prompt;
 
+      - name: Skip workflow if prompt is empty
+        if: ${{ steps.prompt.outputs.result == '' }}
+        run: |
+          echo "Issue body is empty, skipping CLAUDE Auto-Fix."
+          exit 0
+
+      - name: Debug prompt
+        run: |
+          echo "=== PROMPT ==="
+          echo "${{ steps.prompt.outputs.result }}"
+          echo "=============="
+
+      - name: Create temp branch
+        run: git checkout -b auto-fix/issue-${{ github.event.issue.number }}
+
       - name: Claude Auto Fix
+        id: claude
         uses: anthropics/claude-code-action@v1
+        continue-on-error: true
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           github_token: ${{ github.token }}
@@ -96,6 +121,7 @@ jobs:
               repo: context.repo.repo,
               body: "⚠️ Claude ran successfully but produced no changes."
             })
+
 
       # Placeholder for future test stage
       # - name: Run tests (future)
