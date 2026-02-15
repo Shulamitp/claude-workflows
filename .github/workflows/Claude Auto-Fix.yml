@@ -71,8 +71,7 @@ jobs:
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           github_token: ${{ github.token }}
-          max_turns: "10"
-          allowed_tools: "Edit,Write,Bash"
+          claude_args: "--yes --max-turns 10 --allowedTools Edit Write Bash"
           show_full_output: true
           prompt: ${{ steps.prompt.outputs.result }}
 
