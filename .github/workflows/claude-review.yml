@@ -93,6 +93,37 @@ jobs:
           
             If the PR looks good, provide a short positive summary.
 
+      - name: Post Claude review as PR comment
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ github.token }}
+          script: |
+            const fs = require('fs');
+
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const prNumber = Number('${{ steps.prnum.outputs.pr_number }}');
+
+            const reportPath = `${process.env.RUNNER_TEMP}/claude-execution-output.json`;
+            const raw = fs.readFileSync(reportPath, 'utf8');
+            const data = JSON.parse(raw);
+
+            const report = data.result || 'No report text found in claude-execution-output.json';
+
+            const body =
+              `## 🤖 Claude Code Review (automated)\n` +
+              `Run: ${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}\n\n` +
+              report;
+
+            await github.rest.issues.createComment({
+              owner,
+              repo,
+              issue_number: prNumber,
+              body
+            });
+
+
 
 
 
