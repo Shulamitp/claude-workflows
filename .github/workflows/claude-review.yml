@@ -1,11 +1,11 @@
-name: Claude Security Code Review
+name: Claude PR Code Review
 
 on:
   pull_request:
     types: [opened, synchronize, reopened]
 
 jobs:
-  security-review:
+  claude-review:
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -57,4 +57,5 @@ jobs:
             - Suggest a concrete improvement
           
             If the PR looks good, provide a short positive summary.
+
 
