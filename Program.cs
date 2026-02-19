@@ -33,7 +33,7 @@ app.MapGet("/hello", () =>
 })
 .WithName("InsecureHello");
 
-
+//
 app.MapGet("/", () =>
 {
     return "Root endpoint without authorization";
