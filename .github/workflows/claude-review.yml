@@ -3,6 +3,12 @@ name: Claude PR Code Review
 on:
   pull_request:
     types: [opened, synchronize, reopened]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: "PR number to review"
+        required: true
+        type: string
 
 jobs:
   claude-review:
@@ -57,5 +63,6 @@ jobs:
             - Suggest a concrete improvement
           
             If the PR looks good, provide a short positive summary.
+
 
 
