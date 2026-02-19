@@ -138,15 +138,23 @@ jobs:
         if: steps.changes.outputs.has_changes == 'true'
         uses: actions/github-script@v7
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ github.token }}
           script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+      
+            const issueNumber = context.payload.issue.number;
+            const headBranch = `auto-fix/issue-${issueNumber}`;
+      
+            const prNumber = "${{ steps.pr.outputs.pull-request-number }}";
+      
             await github.rest.actions.createWorkflowDispatch({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              workflow_id: "claude-review.yml",  
-              ref: "main",
+              owner,
+              repo,
+              workflow_id: "claude-review.yml",
+              ref: headBranch, // <-- חשוב: מריצים על בראנץ' ה-PR
               inputs: {
-                pr_number: "${{ steps.pr.outputs.pull-request-number }}"
+                pr_number: prNumber
               }
             });
             
