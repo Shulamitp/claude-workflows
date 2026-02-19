@@ -82,7 +82,7 @@ jobs:
 
       - name: Push and Create Pull Request
         if: steps.changes.outputs.has_changes == 'true'
-        run: git push origin auto-fix/issue-${{ github.event.issue.number }}
+        run: git push --force-with-lease -u origin auto-fix/issue-${{ github.event.issue.number }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
