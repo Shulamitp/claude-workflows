@@ -67,7 +67,7 @@ jobs:
           github_token: ${{ github.token }}
           
           use_sticky_comment: true
-          track_progress: true
+          track_progress: ${{ github.event_name != 'workflow_dispatch' }}
           show_full_output: true
 
           prompt: |
@@ -91,6 +91,7 @@ jobs:
             - Suggest a concrete improvement
           
             If the PR looks good, provide a short positive summary.
+
 
 
 
