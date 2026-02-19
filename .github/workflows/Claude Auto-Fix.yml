@@ -58,7 +58,7 @@ jobs:
           exit 0
 
       - name: Create temp branch
-        run: git checkout -b auto-fix/issue-${{ github.event.issue.number }}
+        run: git checkout -B auto-fix/issue-${{ github.event.issue.number }}
 
       - name: Claude Auto Fix
         uses: anthropics/claude-code-action@v1
@@ -91,6 +91,7 @@ jobs:
         if: steps.changes.outputs.has_changes == 'true'
         uses: actions/github-script@v7
         with:
+          github-token: ${{ secrets.BOT_PAT }}
           script: |
             const owner = context.repo.owner;
             const repo = context.repo.repo;
@@ -121,23 +122,24 @@ jobs:
               core.setOutput('pull-request-number', pr.data.number);
               core.info(`Created PR: #${pr.data.number}`);
             }
-      
-            - name: Comment PR link on issue
-              if: steps.changes.outputs.has_changes == 'true'
-              uses: actions/github-script@v7
-              with:
-                script: |
-                  github.rest.issues.createComment({
-                    issue_number: context.issue.number,
-                    owner: context.repo.owner,
-                    repo: context.repo.repo,
-                    body: `✅ Auto-fix PR created: #${{ steps.pr.outputs.pull-request-number }}`
-                  })
+      - name: Comment PR link on issue
+        if: steps.changes.outputs.has_changes == 'true'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.BOT_PAT }}
+          script: |
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `✅ Auto-fix PR created: #${{ steps.pr.outputs.pull-request-number }}`
+            })
 
       - name: Comment if no changes
         if: steps.changes.outputs.has_changes == 'false'
         uses: actions/github-script@v7
         with:
+          github-token: ${{ secrets.BOT_PAT }}
           script: |
             github.rest.issues.createComment({
               issue_number: context.issue.number,
