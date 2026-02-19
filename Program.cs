@@ -25,7 +25,7 @@ app.MapGet("/secure", [Authorize] () =>
     return "This endpoint requires authorization";
 })
 .WithName("SecureEndpoint");
-//
+////
 
 app.MapGet("/hello", () =>
 {
