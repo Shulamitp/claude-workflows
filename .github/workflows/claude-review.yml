@@ -37,16 +37,24 @@ jobs:
           show_full_output: true
 
           prompt: |
-            SECURITY REVIEW — PR DIFF BELOW
-
+            You are an experienced senior engineer performing a PR code review.
+          
+            Review ONLY the diff below.
+          
             {{ file:pr.diff }}
+          
+            Focus on:
+            - Logic errors
+            - Edge cases
+            - Maintainability and readability
+            - Security risks
+            - Performance concerns
+            - Missing validation or error handling
+          
+            For each issue:
+            - Explain what is wrong
+            - Why it matters
+            - Suggest a concrete improvement
+          
+            If the PR looks good, provide a short positive summary.
 
-            For every security issue:
-            - Write a GitHub PR review comment
-            - Explain the risk
-            - Suggest a fix
-
-            If no issues exist:
-            - Write confirmation comment
-
-            Missing authorization = critical vulnerability.
