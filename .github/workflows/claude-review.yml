@@ -26,13 +26,35 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Fetch base branch
-        run: git fetch origin ${{ github.base_ref }}
+      - name: Resolve PR number
+        id: prnum
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prNumber = context.payload.pull_request?.number || Number(core.getInput('pr_number'));
+            if (!prNumber) throw new Error("No PR number found (pull_request event or workflow_dispatch input pr_number required).");
+            core.setOutput('pr_number', String(prNumber));
 
-      - name: Generate diff
-        run: git diff origin/${{ github.base_ref }}...HEAD > pr.diff
+      - name: Fetch PR metadata
+        id: prdata
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prNumber = Number('${{ steps.prnum.outputs.pr_number }}');
+            const { owner, repo } = context.repo;
+            const pr = await github.rest.pulls.get({ owner, repo, pull_number: prNumber });
+            core.setOutput('base_ref', pr.data.base.ref);
+            core.setOutput('base_sha', pr.data.base.sha);
+            core.setOutput('head_sha', pr.data.head.sha);
 
-      - name: Claude PR Security Review
+      - name: Checkout PR head and generate diff
+        run: |
+          git fetch origin ${{ steps.prdata.outputs.base_ref }}
+          git fetch origin ${{ steps.prdata.outputs.head_sha }}
+          git checkout ${{ steps.prdata.outputs.head_sha }}
+          git diff ${{ steps.prdata.outputs.base_sha }}...${{ steps.prdata.outputs.head_sha }} > pr.diff
+
+      - name: Claude PR Code Review
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
@@ -63,6 +85,7 @@ jobs:
             - Suggest a concrete improvement
           
             If the PR looks good, provide a short positive summary.
+
 
 
 
